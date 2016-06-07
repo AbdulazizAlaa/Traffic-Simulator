@@ -8,9 +8,38 @@ $(document).ready(function(){
     console.log("x: "+e.offsetX, "y: "+e.offsetY);
   });
 
+  // Instantiate a slider
+  var carSlider = $("#car-num-slider");
+  var velSlider = $("#vel-num-slider");
+
+  carSlider.slider()
+  velSlider.slider()
+
+  carSlider.on('slidechange', function(e, ui){
+    car_slide_val_elem.innerText = ui.value;
+    n_cars = ui.value;
+  });
+
+  velSlider.on('slidechange', function(e, ui){
+    vel_slide_val_elem.innerText = ui.value;
+    car_vel = ui.value;
+  });
+
+  // UI Elements
+  var timer_elem = $("#sim-timer")[0];
+  var avg_wait_time_elem = $("#sim-avg-wait-time")[0];
+  var car_count_elem = $("#sim-car-count")[0];
+  var car_slide_val_elem = $("#car-slider-value")[0];
+  var vel_slide_val_elem = $("#vel-slider-value")[0];
+
+  var timer = 0;
+  var timeScale = 0.05;
+  var totalWaitingTime = 0;
+  var numCarsOut = 0  ;
   var traffic_light_thickness = 10; //thickness of traffic lights collider
   var timer_speed = 1; //traffic lights timer speed
-  var n_cars = 0; //num cars to be generated using the generateCars function
+  var car_vel = 1;
+  var n_cars = 10; //num cars to be generated using the generateCars function
   var response; //response object to be used in collision calculations
   var collision; //collision object used in collision calculations true if there is a collision
   var noCollisions; //true if a car does not collide with any collider
@@ -18,29 +47,76 @@ $(document).ready(function(){
   var intersectionOptions = [Globals.RIGHT_TAG, Globals.LEFT_TAG, Globals.FORWARD_TAG]; //default options for a intersections that a car can do
   var roadOptions = [Globals.END_TAG]; //default options for a start and end of roads that a car can do
   var traffic_light_time_limit = 300;
+
+  //draw fountain and grass
+  // ctx.drawImage()
+
   // Adding roads
   var roads = new Array();
   // roads.push(new road(100, 0, 80, 50, Globals.ROAD_COLOR, Globals.VERTICALE_TAG, roadOptions, ctx));
   // roads.push(new road(0, 100, 50, 80, Globals.ROAD_COLOR, Globals.HORIZONTAL_TAG, roadOptions, ctx));
-  roads.push(new road(50, 220, 400, 30, Globals.ROAD_COLOR, Globals.HORIZONTAL_TAG, roadOptions, undefined, ctx));
-  roads.push(new road(450, 220, 0, 30, Globals.ROAD_COLOR, Globals.HORIZONTAL_TAG, roadOptions, undefined, ctx));
 
-  roads.push(new road(200, 330, 250, 30, Globals.ROAD_COLOR, Globals.HORIZONTAL_TAG, roadOptions, undefined, ctx));
-  roads.push(new road(450, 330, 0, 30, Globals.ROAD_COLOR, Globals.HORIZONTAL_TAG, roadOptions, undefined, ctx));
+  // options parameter contains
+  // options that car can perform when colliding with collider
+  // margin of the collider to push out of its regular place
+  // type of the collider {road, start_road, curve}
+  // dir is it a start or end collider
+  // you have start_oprions and end_options for the start and end collider
 
-  roads.push(new road(80, 420, 120, 30, Globals.ROAD_COLOR, Globals.HORIZONTAL_TAG, roadOptions, undefined, ctx));
+  //upper horizontal roads
+  roads.push(new road(50, 220, 380, 30, Globals.ROAD_COLOR, Globals.HORIZONTAL_TAG, {options: roadOptions, margin: -10, type: "", dir: 0}, undefined, ctx));
+  roads.push(new road(430, 220, 120, 30, Globals.ROAD_COLOR, Globals.HORIZONTAL_TAG, {options: roadOptions, margin: 0, type: "", dir: 0}, undefined, ctx));
+  roads.push(new road(550, 220, 0, 30, Globals.ROAD_COLOR, Globals.HORIZONTAL_TAG, {options: roadOptions, margin: 0, type: "", dir: 0}, {options: roadOptions, margin: 0, type: Globals.START_ROAD_TAG, dir: 1}, ctx));
 
-  roads.push(new road(50, 250, 30, 200, Globals.ROAD_COLOR, Globals.VERTICALE_TAG, roadOptions, undefined, ctx));
-  roads.push(new road(170, 330, 30, 90, Globals.ROAD_COLOR, Globals.VERTICALE_TAG, roadOptions, undefined, ctx));
+  //lower horizontal roads
+  roads.push(new road(200, 330, 100, 30, Globals.ROAD_COLOR, Globals.HORIZONTAL_TAG, undefined, {options: roadOptions, margin: 0, type: "", dir: 1}, ctx));
+  roads.push(new road(230, 330, 0, 30, Globals.ROAD_COLOR, Globals.HORIZONTAL_TAG, undefined, {options: roadOptions, margin: 0, type: "", dir: 1}, ctx));
 
-  roads.push(new road(420, 250, 30, 80, Globals.ROAD_COLOR, Globals.VERTICALE_TAG, undefined, undefined, ctx));
+  //horizontal u-turn
+  roads.push(new road(80, 420, 120, 30, Globals.ROAD_COLOR, Globals.HORIZONTAL_TAG, undefined, {options: roadOptions, margin: 10, type: "", dir: 1}, ctx));
+
+  //verticale u-turn
+  roads.push(new road(520, 250, 30, 80, Globals.ROAD_COLOR, Globals.VERTICALE_TAG, undefined, {options: roadOptions, margin: 0, type: "", dir: 1}, ctx));
+
+  //middle
+  roads.push(new road(300, 0, 30, 220, Globals.ROAD_COLOR, Globals.VERTICALE_TAG, {options: roadOptions, margin: 0, type: Globals.START_ROAD_TAG, dir: 0}, {options: roadOptions, margin: 0, type: "", dir: 1}, ctx));
+  roads.push(new road(400, 0, 30, 220, Globals.ROAD_COLOR, Globals.VERTICALE_TAG, {options: roadOptions, margin: 0, type: Globals.ROAD_TAG, dir: 1}, undefined, ctx));
+
+  roads.push(new road(300, 250, 30, 80, Globals.ROAD_COLOR, Globals.VERTICALE_TAG, undefined, undefined, ctx));
+  roads.push(new road(400, 250, 30, 80, Globals.ROAD_COLOR, Globals.VERTICALE_TAG, undefined, undefined, ctx));
+
+  roads.push(new road(300, 360, 30, 140, Globals.ROAD_COLOR, Globals.VERTICALE_TAG, undefined, {options: roadOptions, margin: 0, type: Globals.ROAD_TAG, dir: 1}, ctx));
+  roads.push(new road(400, 360, 30, 140, Globals.ROAD_COLOR, Globals.VERTICALE_TAG, {options: roadOptions, margin: 0, type: "", dir: 0}, {options: roadOptions, margin: 0, type: Globals.START_ROAD_TAG, dir: 1}, ctx));
+
+  //left verticale roads
+  roads.push(new road(50, 250, 30, 180, Globals.ROAD_COLOR, Globals.VERTICALE_TAG, undefined, {options: roadOptions, margin: 0, type: "", dir: 1}, ctx));
+  roads.push(new road(170, 330, 30, 90, Globals.ROAD_COLOR, Globals.VERTICALE_TAG, {options: roadOptions, margin: -10, type: "", dir: 1}, undefined, ctx));
+
+  roads.push(new road(50, 430, 30, 70, Globals.ROAD_COLOR, Globals.VERTICALE_TAG, undefined, {options: roadOptions, margin: 0, type: "", dir: 1}, ctx));
+  roads.push(new road(170, 450, 30, 50, Globals.ROAD_COLOR, Globals.VERTICALE_TAG, undefined, {options: roadOptions, margin: 0, type: Globals.START_ROAD_TAG, dir: 1}, ctx));
+
 
   // Adding Intersection
   var intersections = new Array();
   intersections.push(new intersection(100, 100, 80, 80, traffic_light_thickness, intersectionOptions));
 
+  // start road
+  // we are adding the start_roads colliders only to this array
+  // we use it to generate cars so we do not need all the roads
+  // we loop over the roads array and check if the collider is a start_road collider
+
+  var start_roads = new Array();
+  for(var i=0 ; i<roads.length ; i++){
+    for(var j=0 ; j<roads[i].options.length ; j++){
+      if(roads[i].options[j] !== undefined && roads[i].options[j].type == Globals.START_ROAD_TAG){
+        // start_roads.push({x: roads[i].x, y: roads[i].y, width: roads[i].width, height: roads[i].height, orient: roads[i].orient});
+        start_roads.push(roads[i]);
+      }
+    }
+  }
+
   // Adding cars
-  var cars = generateCars(roads, n_cars, ctx);
+  var cars = generateCars(start_roads, n_cars, ctx);
 
   // Creating collidiers
 
@@ -52,23 +128,35 @@ $(document).ready(function(){
   }
   // roads start and end
   for(var i=0 ; i<roads.length ; i++){
-    for(var j=0 ; j<roads[i].colliders.length ; j++){
-        colliders.push({collider: roads[i].colliders[j], type: Globals.ROAD_TAG, options: roads[i].options[j]});
+    for(var j=0 ; j<roads[i].options.length ; j++){
+        if(roads[i].options[j] !== undefined){
+          colliders.push({collider: roads[i].colliders[j], type: Globals.ROAD_TAG, options: roads[i].options[j]});
+        }
     }
-    // colliders.push({collider: roads[i].colliders[0], type: Globals.ROAD_TAG, options: roads[i].options});
-    // colliders.push({collider: roads[i].colliders[1], type: Globals.ROAD_TAG, options: roads[i].options});
   }
   // Intersection
-  for(var i=0 ; i<intersections.length ; i++){
-    for(var j=0; j<intersections[i].traffic_lights.length ; j++){
-      colliders.push({collider: intersections[i].traffic_lights[j] , type: Globals.TRAFFIC_LIGHT_TAG, intersection_index: i, light_index: j, options: intersections[i].options});
-    }
-  }
+  // for(var i=0 ; i<intersections.length ; i++){
+  //   for(var j=0; j<intersections[i].traffic_lights.length ; j++){
+  //     colliders.push({collider: intersections[i].traffic_lights[j] , type: Globals.TRAFFIC_LIGHT_TAG, intersection_index: i, light_index: j, options: intersections[i].options});
+  //   }
+  // }
 
   // Main program loop all drawing happens here
   var mainLoop = function(){
     //clearing the canvas to draw again
     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+    // count Time
+    timer += timeScale;
+    timer_elem.innerText = timer.toFixed(2);
+
+    //update average waiting time
+    // avg_wait_time_elem.innerText = (totalWaitingTime/numCarsOut).toFixed(2);
+    if(numCarsOut != 0)
+      avg_wait_time_elem.innerText = (totalWaitingTime/numCarsOut).toFixed(2);
+
+    // update car count
+    car_count_elem.innerText = cars.length;
 
     //draw roads
     for(var i=0; i<roads.length ; i++){
@@ -93,6 +181,8 @@ $(document).ready(function(){
         continue;
       for(var j=0 ; j<roads.length ; j++){ //loops over roads to check for collision with car i
           for(var k = 0 ; k<roads[j].colliders.length ; k++){ //loops over road start and end colliders to check collision with car i
+            if(roads[j].colliders[k] === undefined)
+              continue;
             response = new SAT.Response();
             collision = SAT.testPolygonPolygon(cars[i].collider.toPolygon(), roads[j].colliders[k].toPolygon(), response);
             if(collision){
@@ -112,10 +202,16 @@ $(document).ready(function(){
     for(var i=0; i<cars.length ; i++){
       noCollisions = true;
       cars[i].n_carCollisions = 0;
+      if(cars[i].crossedStartLine)
+        cars[i].timer += timeScale;
       for(var j=0; j<colliders.length ; j++){
           response = new SAT.Response();
           collision = SAT.testPolygonPolygon(cars[i].collider.toPolygon(), colliders[j].collider.toPolygon(), response);
 
+          // there are 3 reasons to neglect detected collisions
+          // if i == j this means i am checking collision against my own self
+          // if still not crossed start line and collideded with a road. to ignore start road Collision
+          // if collideded with a car from behind so ignore that
           if((i==j) ||
              (!cars[i].crossedStartLine && colliders[j].type == Globals.ROAD_TAG) ||
              (cars[i].neglectCarCollision && colliders[j].type == Globals.CAR_TAG))
@@ -159,6 +255,8 @@ $(document).ready(function(){
                 var optionIndex = Math.floor(Math.random() * colliders[j].options.length);
                 var option = colliders[j].options[optionIndex];
                 if(option == Globals.END_TAG){
+                    totalWaitingTime += cars[i].timer;
+                    numCarsOut++;
                     colliders.splice(i, 1);
                     cars.splice(i, 1);
                 }

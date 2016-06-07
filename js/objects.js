@@ -11,18 +11,19 @@ var car = function(x, y, width, height, accelration, color, orientation, directi
   this.type = Globals.CAR_TAG;
   this.id = 0;
   this.options = options;
-  this.crossedStartLine = false;
-  this.startedCrossing = false;
-  this.neglectCarCollision = false;
-  this.n_carCollisions = 0;
+  this.crossedStartLine = false; // true when car crosses the start line indecating that collisions with roads are valid
+  this.startedCrossing = false; // true if the car is collideded with a road and it is still not crosssed start line
+  this.neglectCarCollision = false; //true if you want to neglect any car collisions with this car
+  this.n_carCollisions = 0; // number of cars collideded with this car
+  this.timer = 0;
 
   if(this.orient === Globals.VERTICALE_TAG){
     this.width = width;
     this.height = height;
-    this.x_offset = 0;
-    this.y_offset = this.height/3;
-    this.batch_w = this.width;
-    this.batch_h = this.height/2.5;
+    this.x_offset = 0; // car batch offset from car original x
+    this.y_offset = this.height/3; // car batch offset from car original y
+    this.batch_w = this.width; // car batch width as a ratio from car original width
+    this.batch_h = this.height/2.5; // car batch height as a ratio from car original height
   }else if(this.orient === Globals.HORIZONTAL_TAG){
     this.width = height;
     this.height = width;
@@ -158,23 +159,29 @@ var road = function(x, y, width, height, color, orientation, start_options, end_
   this.ctx = ctx;
   this.colliderW = 10;
   this.colliders = new Array();
-  this.carCount = [1, 1];
+  this.carCount = [1, 1]; // number of cars generated in each road
   this.options = [start_options, end_options];
 
   if(this.orient == Globals.HORIZONTAL_TAG){
-    this.width = (width==0)? (ctx.canvas.width - this.x) : width;
+    this.width = (width==0)? (ctx.canvas.width - this.x) : width; // lw el width ewaul zero yb2a ana 3awz el width bta3 el canvas same with height
     this.height = height;
-    if(this.options[0] !== undefined)
-      this.colliders.push(new SAT.Box(new SAT.Vector(this.x, this.y), this.colliderW, this.height));
+    if(this.options[0] !== undefined) // if the options is undefined means i don't want to create a collider
+      this.colliders.push(new SAT.Box(new SAT.Vector(this.x+this.options[0].margin, this.y), this.colliderW, this.height));
+    else
+      this.colliders.push(undefined);
+
     if(this.options[1] !== undefined)
-      this.colliders.push(new SAT.Box(new SAT.Vector(this.x+this.width-this.colliderW, this.y), this.colliderW, this.height));
+      this.colliders.push(new SAT.Box(new SAT.Vector(this.x+this.width-this.colliderW+this.options[1].margin, this.y), this.colliderW, this.height));
   }else if(this.orient == Globals.VERTICALE_TAG){
     this.width = width;
     this.height = (height==0)? (ctx.canvas.height - this.y) : height;
     if(this.options[0] !== undefined)
-      this.colliders.push(new SAT.Box(new SAT.Vector(this.x, this.y), this.width, this.colliderW));
+      this.colliders.push(new SAT.Box(new SAT.Vector(this.x, this.y+this.options[0].margin), this.width, this.colliderW));
+    else
+      this.colliders.push(undefined);
+
     if(this.options[1] !== undefined)
-      this.colliders.push(new SAT.Box(new SAT.Vector(this.x, this.y+this.height-this.colliderW), this.width, this.colliderW));
+      this.colliders.push(new SAT.Box(new SAT.Vector(this.x, this.y+this.height-this.colliderW+this.options[1].margin), this.width, this.colliderW));
   }
 
   this.draw = function(){
@@ -216,7 +223,10 @@ var intersection = function(x, y, width, height, thickness, options){
 var drawColliders = function(colliders, ctx){
   // Drawing collidiers
   for(var i=0; i<colliders.length ; i++){
-    ctx.strokeStyle = Globals.COLLIDER_COLOR;
+    if(colliders[i].options !== undefined && colliders[i].options.type == Globals.START_ROAD_TAG)
+      ctx.strokeStyle = Globals.START_COLLIDER_COLOR;
+    else
+      ctx.strokeStyle = Globals.COLLIDER_COLOR;
     if(colliders[i].orient == Globals.VERTICALE_TAG){
       ctx.strokeRect(colliders[i].collider.pos.x, colliders[i].collider.pos.y, colliders[i].collider.w, colliders[i].collider.h);
     }else if(colliders[i].orient == Globals.HORIZONTAL_TAG){
@@ -227,20 +237,30 @@ var drawColliders = function(colliders, ctx){
   }
 };
 
+
 var generateCars = function(roads, n_cars, ctx){
     var cars = new Array();
     var road_index, dir_index, color_index, orient, x, y, w, h, acc, dir;
-    var car_w = 20;
-    var car_h = 50;
+    var car_w = 10;
+    var car_h = 30;
     var distanceFactor = 1.1;
     var colorCodes = ["#DAF7A6", "#FFC300", "#FF5733", "#C70039", "#900C3F", "#581845"];
     var options = [];
 
     for(var i=0 ; i<n_cars ; i++){
-      // road_index = Math.floor(Math.random() * roads.length);
+      // get random number between 0 and roads array length indecating the desired road to generate car at
+      road_index = Math.floor(Math.random() * roads.length);
       // dir_index = Math.floor(Math.random() * 2);
-      road_index = 0;
-      dir_index = 0;
+      // road_index = 0;
+      // dir_index = 1;
+
+      // this construct is called conditional ternary operator
+      // we got the index of the road randomly to generate Car at
+      // we want to get the direction of the road so we check if the first collider is not undefined and is a start_road if so
+      // first collider is the start collider otherwise the second collider is the start collider
+      dir_index = (roads[road_index].options[0] !== undefined && roads[road_index].options[0].type == Globals.START_ROAD_TAG) ? roads[road_index].options[0].dir : roads[road_index].options[1].dir;
+
+      // get random number between 0 and colorCodes array length to choose the desired color to use for the car
       color_index = Math.floor(Math.random() * colorCodes.length)
       orient = roads[road_index].orient;
       x = roads[road_index].x;
@@ -254,7 +274,7 @@ var generateCars = function(roads, n_cars, ctx){
         if(dir_index === 0){
           // start of road
           dir = Globals.DOWN_TAG;
-          x += car_w/2;
+          x += car_w/2; //3shan azbot el car f nos el road.
           y += car_h/4 - (roads[road_index].carCount[dir_index] * distanceFactor * car_h);
         }else if(dir_index === 1){
           // end of road

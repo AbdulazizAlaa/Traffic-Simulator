@@ -1,11 +1,12 @@
 var Globals = function(){
   this.VERTICALE_TAG = "verticale";
   this.HORIZONTAL_TAG = "horizontal";
-  this.RIGHT_TAG = "right";
-  this.LEFT_TAG = "left";
-  this.UP_TAG = "up";
-  this.DOWN_TAG = "down";
-  this.ROAD_TAG = "road";
+  this.RIGHT_TAG = "right"; // means i am heading right
+  this.LEFT_TAG = "left"; // means i am heading left
+  this.UP_TAG = "up"; // means i am heading up
+  this.DOWN_TAG = "down"; // means i am heading down
+  this.ROAD_TAG = "road"; // tag for road collider
+  this.START_ROAD_TAG = "start_road"; // tag for start of the road collider
   this.CAR_TAG = "car";
   this.TRAFFIC_LIGHT_TAG = "traffic_light";
   this.FORWARD_TAG = "forward";
@@ -13,6 +14,7 @@ var Globals = function(){
   this._TAG = "";
   this.FRAME_DELAY = 1000/60;
   this.COLLIDER_COLOR = "#FF0000";
+  this.START_COLLIDER_COLOR = "#AAF000";
   this.ROAD_COLOR = "#000";
 };
 
