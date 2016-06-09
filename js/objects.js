@@ -1,4 +1,4 @@
-var car = function(x, y, width, height, accelration, color, orientation, direction, options, ctx){
+var car = function(x, y, width, height, accelration, color, orientation, direction, options, lane, ctx){
 
   this.x = x;
   this.y = y;
@@ -16,6 +16,11 @@ var car = function(x, y, width, height, accelration, color, orientation, directi
   this.neglectCarCollision = false; //true if you want to neglect any car collisions with this car
   this.n_carCollisions = 0; // number of cars collideded with this car
   this.timer = 0;
+  this.lane_index = lane;
+  this.option = undefined;
+  this.currentCollision = undefined;
+  this.reducedSpeed = false;
+  this.holdOutTime = 0;
 
   if(this.orient === Globals.VERTICALE_TAG){
     this.width = width;
@@ -65,9 +70,30 @@ var car = function(x, y, width, height, accelration, color, orientation, directi
   };
 
 
-  this.change_lane = function(dir){
-    var dx = 40;
-    var dy = 50;
+  this.car_in_front = function(collider){
+    var isInFront = false;
+    if(this.orient == Globals.HORIZONTAL_TAG){
+      if(this.dir == Globals.RIGHT_TAG){
+        isInFront = collider.pos.x > this.x;
+      }else if(this.dir == Globals.LEFT_TAG){
+        isInFront = this.x > collider.pos.x;
+      }
+    }else if(this.orient == Globals.VERTICALE_TAG){
+      if(this.dir == Globals.UP_TAG){
+        isInFront = collider.pos.y > this.y;
+      }else if(this.dir == Globals.DOWN_TAG){
+        isInFront = this.y > collider.pos.y;
+      }
+    }
+    return isInFront;
+  };
+
+
+  this.change_lane = function(dir, lane_index){
+    var dx = 15;
+    var dy = 20;
+    var num_lanes = this.currentCollision;
+
     if(this.orient == Globals.VERTICALE_TAG){
       this.set_orient(Globals.HORIZONTAL_TAG);
       if(this.dir == Globals.DOWN_TAG){
@@ -76,24 +102,23 @@ var car = function(x, y, width, height, accelration, color, orientation, directi
           this.x -= dx+dx/2;
 
           this.acc = -this.acc;
-          this.dir = Globals.RIGHT_TAG;
+          this.dir = Globals.LEFT_TAG;
         }else if(dir == Globals.LEFT_TAG){
-          this.y += dy+dy/2;
-          this.x += 2*dx;
+          this.x += (num_lanes-1)*dx+this.lane_index*(num_lanes-1)*1*dx;
 
           this.acc = this.acc;
-          this.dir = Globals.LEFT_TAG;
+          this.dir = Globals.RIGHT_TAG;
         }
       }else if(this.dir == Globals.UP_TAG){
         if(dir == Globals.RIGHT_TAG){
-          this.y -= dy+dy/2;
-          this.x += dx;
+          this.y += .8*dy-this.lane_index*(num_lanes-1)*.8*dy;
+          this.x += dx/4+this.lane_index*dx;
 
           this.acc = -this.acc;
           this.dir = Globals.RIGHT_TAG;
         }else if(dir == Globals.LEFT_TAG){
-          this.y -= dy-dy/3;
-          this.x -= 2*dx;
+          this.y -= this.lane_index*(num_lanes-1)*.8*dy;
+          this.x -= 2*dx+this.lane_index*1*dx;
 
           this.acc = this.acc;
           this.dir = Globals.LEFT_TAG;
@@ -109,10 +134,11 @@ var car = function(x, y, width, height, accelration, color, orientation, directi
           this.acc = this.acc;
           this.dir = Globals.DOWN_TAG;
         }else if(dir == Globals.LEFT_TAG){
-          this.y -= dy+dy/4 ;
-          this.x += 3*dx-dx/6;
+          this.y -= 1.7*dy+this.lane_index*(num_lanes-1)*.8*dy ;
+          this.x += 1.3*dx;
 
           this.acc = -this.acc;
+          // this.acc = 0;
           this.dir = Globals.UP_TAG;
         }
       }else if(this.dir == Globals.LEFT_TAG){
@@ -123,8 +149,8 @@ var car = function(x, y, width, height, accelration, color, orientation, directi
           this.acc = this.acc;
           this.dir = Globals.UP_TAG;
         }else if(dir == Globals.LEFT_TAG){
-          this.y += dy ;
-          this.x -= 2*dx;
+          this.y += dy+this.lane_index*.7*dy;
+          this.x += this.lane_index*(num_lanes-1)*dx;
 
           this.acc = -this.acc;
           this.dir = Globals.DOWN_TAG;
@@ -150,21 +176,25 @@ var car = function(x, y, width, height, accelration, color, orientation, directi
 };
 
 
-var road = function(x, y, width, height, color, orientation, start_options, end_options, ctx){
+var road = function(x, y, width, height, color, orientation, num_lanes, start_options, end_options, ctx){
 
   this.x = x;
   this.y = y;
   this.orient = orientation;
   this.color = color;
   this.ctx = ctx;
-  this.colliderW = 10;
+  this.colliderW = 2;
   this.colliders = new Array();
   this.carCount = [1, 1]; // number of cars generated in each road
   this.options = [start_options, end_options];
+  this.num_lanes = num_lanes;
 
   if(this.orient == Globals.HORIZONTAL_TAG){
     this.width = (width==0)? (ctx.canvas.width - this.x) : width; // lw el width ewaul zero yb2a ana 3awz el width bta3 el canvas same with height
     this.height = height;
+    if(this.num_lanes == 1)
+      this.height /= 2;
+
     if(this.options[0] !== undefined) // if the options is undefined means i don't want to create a collider
       this.colliders.push(new SAT.Box(new SAT.Vector(this.x+this.options[0].margin, this.y), this.colliderW, this.height));
     else
@@ -175,6 +205,9 @@ var road = function(x, y, width, height, color, orientation, start_options, end_
   }else if(this.orient == Globals.VERTICALE_TAG){
     this.width = width;
     this.height = (height==0)? (ctx.canvas.height - this.y) : height;
+    if(this.num_lanes == 1)
+      this.width /= 2;
+
     if(this.options[0] !== undefined)
       this.colliders.push(new SAT.Box(new SAT.Vector(this.x, this.y+this.options[0].margin), this.width, this.colliderW));
     else
@@ -189,14 +222,19 @@ var road = function(x, y, width, height, color, orientation, start_options, end_
         this.ctx.fillStyle = this.color;
         this.ctx.fillRect(this.x, this.y, this.width, this.height);
 
-        this.ctx.fillStyle = "#FFFFFF";
-        this.ctx.fillRect(this.x, this.y+this.height/2-this.height/40, this.width, this.height/20);
+        if(this.num_lanes == 2){
+          this.ctx.fillStyle = "#FFFFFF";
+          this.ctx.fillRect(this.x, this.y+this.height/2-this.height/40, this.width, this.height/20);
+        }
       }else if(this.orient == Globals.VERTICALE_TAG){
         this.ctx.fillStyle = this.color;
         this.ctx.fillRect(this.x, this.y, this.width, this.height);
 
-        this.ctx.fillStyle = "#FFFFFF";
-        this.ctx.fillRect(this.x+this.width/2-this.width/40, this.y, this.width/20, this.height);
+        if(this.num_lanes == 2){
+          this.ctx.fillStyle = "#FFFFFF";
+          this.ctx.fillRect(this.x+this.width/2-this.width/40, this.y, this.width/20, this.height);
+        }
+
       }
 
   };
@@ -243,14 +281,15 @@ var generateCars = function(roads, n_cars, ctx){
     var road_index, dir_index, color_index, orient, x, y, w, h, acc, dir;
     var car_w = 10;
     var car_h = 30;
-    var distanceFactor = 1.1;
+    var distanceFactor = 1.5;
     var colorCodes = ["#DAF7A6", "#FFC300", "#FF5733", "#C70039", "#900C3F", "#581845"];
     var options = [];
 
     for(var i=0 ; i<n_cars ; i++){
       // get random number between 0 and roads array length indecating the desired road to generate car at
       road_index = Math.floor(Math.random() * roads.length);
-      // dir_index = Math.floor(Math.random() * 2);
+      lane_index = Math.floor(Math.random() * 2);
+      // lane_index = 0;
       // road_index = 0;
       // dir_index = 1;
 
@@ -267,39 +306,42 @@ var generateCars = function(roads, n_cars, ctx){
       y = roads[road_index].y;
       w = roads[road_index].width;
       h = roads[road_index].height;
-      acc = 1;
+      acc = 1.5;
+      // acc = Math.random()*.5+1;
       dir = "";
 
       if(orient === Globals.VERTICALE_TAG){
         if(dir_index === 0){
           // start of road
           dir = Globals.DOWN_TAG;
-          x += car_w/2; //3shan azbot el car f nos el road.
+          x += w - 1.25*car_w - lane_index*1.5*car_w; //3shan azbot el car f nos el road.
           y += car_h/4 - (roads[road_index].carCount[dir_index] * distanceFactor * car_h);
         }else if(dir_index === 1){
           // end of road
           dir = Globals.UP_TAG;
-          x += w - 1.5*car_w;
+          x += .25*car_w + lane_index*1.5*car_w;
           y += h - 1.25*car_h + (roads[road_index].carCount[dir_index] * distanceFactor * car_h);
           acc = -1*acc;
         }
+
       }else if(orient === Globals.HORIZONTAL_TAG){
         if(dir_index === 0){
           // start of road
           dir = Globals.RIGHT_TAG;
           x += 3*car_w/4  - (roads[road_index].carCount[dir_index] * distanceFactor * car_h);
-          y += car_h/5;
+          y += h - 1.25*car_w;
         }else if(dir_index === 1){
           // end of road
           dir = Globals.LEFT_TAG;
           x += w - 1.25*car_h + (roads[road_index].carCount[dir_index] * distanceFactor * car_h);
-          y += h - 1.5*car_w;
+          y += h - 1.25*car_w;
           acc = -1*acc;
         }
+        y -= lane_index*1.5*car_w;
       }
 
       roads[road_index].carCount[dir_index]++;
-      cars.push(new car(x, y, car_w, car_h, acc, colorCodes[color_index], orient, dir, options, ctx));
+      cars.push(new car(x, y, car_w, car_h, acc, colorCodes[color_index], orient, dir, options, lane_index, ctx));
     }
     return cars;
 };
