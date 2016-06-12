@@ -12,8 +12,8 @@ $(document).ready(function(){
   var carSlider = $("#car-num-slider");
   var velSlider = $("#vel-num-slider");
 
-  carSlider.slider()
-  velSlider.slider()
+  carSlider.slider();
+  velSlider.slider();
 
   carSlider.on('slidechange', function(e, ui){
     car_slide_val_elem.innerText = ui.value;
@@ -67,7 +67,10 @@ $(document).ready(function(){
   };
   img.src = 'https://raw.githubusercontent.com/AbdulazizAlaa/Traffic-Simulator/master/images/fountain-image.png';
 
-  start_b.on('click', function(e){
+  function initSimulation(){
+    timer = 0;
+    totalWaitingTime = 0;
+    numCarsOut = 0  ;
 
     if(interval != undefined)
       clearInterval(interval);
@@ -110,7 +113,6 @@ $(document).ready(function(){
       // left
 
     roads.push(new road(300, 0, 30, 80, Globals.ROAD_COLOR, Globals.VERTICALE_TAG, 2, {options: roadOptions, margin: 0, type: Globals.START_ROAD_TAG, num_lanes: 1, dir: 0}, {options: [Globals.FORWARD_TAG, Globals.LEFT_TAG], margin: 0, type: Globals.ROAD_TAG, num_lanes: 2, dir: 1}, ctx));
-    // roads.push(new road(300, 0, 30, 80, Globals.ROAD_COLOR, Globals.VERTICALE_TAG, 2, {options: roadOptions, margin: 0, type: Globals.START_ROAD_TAG, num_lanes: 1, dir: 0}, {options: [Globals.LEFT_TAG], margin: 0, type: Globals.ROAD_TAG, num_lanes: 2, dir: 1}, ctx));
 
       // traffic light
     // roads.push(new road(300, 80, 30, 140, Globals.ROAD_COLOR, Globals.VERTICALE_TAG, 2, undefined, {options: roadOptions, margin: 0, type: "", num_lanes: 1, dir: 1}, ctx));
@@ -118,16 +120,14 @@ $(document).ready(function(){
 
     roads.push(new road(300, 250, 30, 80, Globals.ROAD_COLOR, Globals.VERTICALE_TAG, 2, undefined, undefined, ctx));
 
-    // roads.push(new road(300, 360, 30, 60, Globals.ROAD_COLOR, Globals.VERTICALE_TAG, 2, undefined, {options: [Globals.LEFT_TAG, Globals.FORWARD_TAG], margin: 10, type: Globals.ROAD_TAG, num_lanes: 1, dir: 1}, ctx));
-    roads.push(new road(300, 360, 30, 60, Globals.ROAD_COLOR, Globals.VERTICALE_TAG, 2, undefined, {options: [Globals.LEFT_TAG], margin: 10, type: Globals.ROAD_TAG, num_lanes: 1, dir: 1}, ctx));
+    roads.push(new road(300, 360, 30, 60, Globals.ROAD_COLOR, Globals.VERTICALE_TAG, 2, undefined, {options: [Globals.LEFT_TAG, Globals.FORWARD_TAG], margin: 10, type: Globals.ROAD_TAG, num_lanes: 1, dir: 1}, ctx));
 
     roads.push(new road(300, 420, 30, 130, Globals.ROAD_COLOR, Globals.VERTICALE_TAG, 2, undefined, {options: roadOptions, margin: 0, type: Globals.ROAD_TAG, num_lanes: 1, dir: 1}, ctx));
 
       // right
 
     roads.push(new road(400, 0, 30, 120, Globals.ROAD_COLOR, Globals.VERTICALE_TAG, 2, {options: roadOptions, margin: 0, type: Globals.ROAD_TAG, num_lanes: 1, dir: 1}, undefined, ctx));
-    // roads.push(new road(400, 120, 30, 100, Globals.ROAD_COLOR, Globals.VERTICALE_TAG, 2, {options: [Globals.LEFT_TAG, Globals.FORWARD_TAG], margin: 25, type: Globals.ROAD_TAG, num_lanes: 1, dir: 1}, undefined, ctx));
-    roads.push(new road(400, 120, 30, 100, Globals.ROAD_COLOR, Globals.VERTICALE_TAG, 2, {options: [Globals.LEFT_TAG], margin: 25, type: Globals.ROAD_TAG, num_lanes: 1, dir: 1}, undefined, ctx));
+    roads.push(new road(400, 120, 30, 100, Globals.ROAD_COLOR, Globals.VERTICALE_TAG, 2, {options: [Globals.LEFT_TAG, Globals.FORWARD_TAG], margin: 25, type: Globals.ROAD_TAG, num_lanes: 1, dir: 1}, undefined, ctx));
 
     roads.push(new road(400, 250, 30, 80, Globals.ROAD_COLOR, Globals.VERTICALE_TAG, 2, undefined, undefined, ctx));
 
@@ -135,18 +135,18 @@ $(document).ready(function(){
     // roads.push(new road(400, 360, 30, 120, Globals.ROAD_COLOR, Globals.VERTICALE_TAG, 2, {options: roadOptions, margin: 0, type: Globals.ROAD_TAG, num_lanes: 1, dir: 0}, undefined, ctx));
     roads.push(new road(400, 360, 30, 120, Globals.ROAD_COLOR, Globals.VERTICALE_TAG, 2, undefined, undefined, ctx));
 
-    // roads.push(new road(400, 480, 30, 70, Globals.ROAD_COLOR, Globals.VERTICALE_TAG, 2, {options: [Globals.LEFT_TAG, Globals.FORWARD_TAG], margin: 15, type: Globals.ROAD_TAG, num_lanes: 1, dir: 0}, {options: roadOptions, margin: 0, type: Globals.START_ROAD_TAG, num_lanes: 1, dir: 1}, ctx));
-
-    roads.push(new road(400, 480, 30, 70, Globals.ROAD_COLOR, Globals.VERTICALE_TAG, 2, {options: [Globals.FORWARD_TAG], margin: 15, type: Globals.ROAD_TAG, num_lanes: 1, dir: 0}, {options: roadOptions, margin: 0, type: Globals.START_ROAD_TAG, num_lanes: 1, dir: 1}, ctx));
+    roads.push(new road(400, 480, 30, 70, Globals.ROAD_COLOR, Globals.VERTICALE_TAG, 2, {options: [Globals.LEFT_TAG, Globals.FORWARD_TAG], margin: 15, type: Globals.ROAD_TAG, num_lanes: 1, dir: 0}, {options: roadOptions, margin: 0, type: Globals.START_ROAD_TAG, num_lanes: 1, dir: 1}, ctx));
 
     //// left verticale roads
-    roads.push(new road(170, 330, 30, 100, Globals.ROAD_COLOR, Globals.VERTICALE_TAG, 2, {options: [Globals.RIGHT_TAG], margin: 35, type: Globals.ROAD_TAG, num_lanes: 1, dir: 0}, undefined, ctx));
-    roads.push(new road(170, 430, 30, 120, Globals.ROAD_COLOR, Globals.VERTICALE_TAG, 2, undefined, {options: roadOptions, margin: 0, type: Globals.START_ROAD_TAG, num_lanes: 1, dir: 1}, ctx));
+
+    roads.push(new road(170, 330, 30, 150, Globals.ROAD_COLOR, Globals.VERTICALE_TAG, 2, {options: [Globals.RIGHT_TAG], margin: 35, type: Globals.ROAD_TAG, num_lanes: 1, dir: 0}, undefined, ctx));
+    roads.push(new road(170, 480, 30,70, Globals.ROAD_COLOR, Globals.VERTICALE_TAG, 2, {options: [Globals.LEFT_TAG, Globals.FORWARD_TAG], margin: 15, type: Globals.ROAD_TAG, num_lanes: 1, dir: 0}, {options: roadOptions, margin: 0, type: Globals.START_ROAD_TAG, num_lanes: 1, dir: 1}, ctx));
 
     roads.push(new road(50, 250, 30, 180, Globals.ROAD_COLOR, Globals.VERTICALE_TAG, 2, undefined, {options: [Globals.FORWARD_TAG, Globals.LEFT_TAG], margin: 0, type: Globals.ROAD_TAG, num_lanes: 2, dir: 1}, ctx));
     roads.push(new road(50, 430, 30, 120, Globals.ROAD_COLOR, Globals.VERTICALE_TAG, 2, undefined, {options: roadOptions, margin: 0, type: "", num_lanes: 1, dir: 1}, ctx));
 
     //// middle Horizontal u-turn
+
     roads.push(new road(330, 80, 70, 30, Globals.ROAD_COLOR, Globals.HORIZONTAL_TAG, 1, undefined, {options: [Globals.LEFT_TAG], margin: -20, type: Globals.U_TURN_TAG, num_lanes: 1, dir: 1}, ctx));
     roads.push(new road(330, 110, 70, 30, Globals.ROAD_COLOR, Globals.HORIZONTAL_TAG, 1, {options: [Globals.LEFT_TAG], margin: 20, type: Globals.U_TURN_TAG, num_lanes: 1, dir: 1}, undefined, ctx));
 
@@ -154,10 +154,12 @@ $(document).ready(function(){
     roads.push(new road(330, 460, 70, 30, Globals.ROAD_COLOR, Globals.HORIZONTAL_TAG, 1, {options: [Globals.LEFT_TAG], margin: 20, type: Globals.U_TURN_TAG, num_lanes: 1, dir: 1}, undefined, ctx));
 
     //// left horizontal u-turn
+
     roads.push(new road(80, 430, 90, 30, Globals.ROAD_COLOR, Globals.HORIZONTAL_TAG, 1, undefined, {options: [Globals.LEFT_TAG], margin: -20, type: Globals.U_TURN_TAG, num_lanes: 1, dir: 1}, ctx));
-    roads.push(new road(80, 460, 90, 30, Globals.ROAD_COLOR, Globals.HORIZONTAL_TAG, 1, undefined, {options: [Globals.LEFT_TAG], margin: 0, type: Globals.U_TURN_TAG, num_lanes: 1, dir: 1}, ctx));
+    roads.push(new road(80, 460, 90, 30, Globals.ROAD_COLOR, Globals.HORIZONTAL_TAG, 1, undefined, {options: [Globals.LEFT_TAG], margin: -70, type: Globals.U_TURN_TAG, num_lanes: 1, dir: 1}, ctx));
 
     //// right verticale u-turn
+
     roads.push(new road(635, 250, 30, 80, Globals.ROAD_COLOR, Globals.VERTICALE_TAG, 1, undefined, {options: [Globals.LEFT_TAG], margin: 0, type: Globals.U_TURN_TAG, num_lanes: 1, dir: 1}, ctx));
     roads.push(new road(605, 250, 30, 80, Globals.ROAD_COLOR, Globals.VERTICALE_TAG, 1, undefined, {options: [Globals.LEFT_TAG], margin: -60, type: Globals.U_TURN_TAG, num_lanes: 1, dir: 1}, ctx));
 
@@ -195,18 +197,7 @@ $(document).ready(function(){
     }
 
     interval = setInterval(mainLoop, Globals.FRAME_DELAY);
-
-  });
-  restart_b.on('click', function(e){
-    console.log(e);
-    if(interval != undefined)
-      clearInterval(interval);
-    interval = setInterval(mainLoop, Globals.FRAME_DELAY);
-  });
-  stop_b.on('click', function(e){
-    console.log(e);
-    clearInterval(interval);
-  });
+  }
 
   // Main program loop all drawing happens here
   var mainLoop = function(){
@@ -278,6 +269,8 @@ $(document).ready(function(){
       if(cars[i].crossedStartLine)
         cars[i].timer += timeScale;
       for(var j=0; j<colliders.length ; j++){
+          if(colliders[j] == undefined)
+            console.log("collider"+j);
           response = new SAT.Response();
           collision = SAT.testPolygonPolygon(cars[i].collider.toPolygon(), colliders[j].collider.toPolygon(), response);
 
@@ -399,6 +392,28 @@ $(document).ready(function(){
     drawColliders(colliders, ctx);
 
   };
+
+
+  // temp call to start simulation for testing purposes
+  console.log("HIII");
+  initSimulation();
+
+
+  start_b.on('click', function(e){
+    initSimulation();
+
+  });
+  restart_b.on('click', function(e){
+    console.log(e);
+    if(interval != undefined)
+      clearInterval(interval);
+    interval = setInterval(mainLoop, Globals.FRAME_DELAY);
+  });
+  stop_b.on('click', function(e){
+    console.log(e);
+    clearInterval(interval);
+  });
+
 
 
 });
