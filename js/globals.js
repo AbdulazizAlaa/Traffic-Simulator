@@ -16,8 +16,9 @@ var Globals = function(){
   this.END_TAG = "end";
   this._TAG = "";
   this.FRAME_DELAY = 1000/60;
-  this.COLLIDER_COLOR = "#FF0000";
+  this.COLLIDER_COLOR = "#00AAAA";
   this.START_COLLIDER_COLOR = "#AAF000";
+  this.TRAFFIC_LIGHT_COLOR = "#FF0000";
   this.ROAD_COLOR = "#000";
 };
 

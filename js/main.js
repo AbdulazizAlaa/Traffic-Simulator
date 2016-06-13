@@ -29,6 +29,28 @@ $(document).ready(function(){
   var start_b = $("#start-b");
   var restart_b = $("#restart-b");
   var stop_b = $("#stop-b");
+  var colliders_cb = $("#colliders-on-cb");
+  var intersection_cb = $("#intersection-on-cb");
+
+  intersection_cb[0].checked = true;
+  intersection_cb.on('change', function(e){
+    isintersectionOn = !isintersectionOn;
+    var options;
+    if(isintersectionOn){
+      trafficLightOptions = defaultIntersectionOptions;
+    }else{
+      trafficLightOptions = [Globals.RIGHT_TAG];
+    }
+    for(var i=0 ; i<roads.length ; i++){
+      if(roads[i].options.type == Globals.TRAFFIC_LIGHT_TAG){
+        roads[i].options = trafficLightOptions;
+      }
+    }
+  });
+  colliders_cb[0].checked = true;
+  colliders_cb.on('change', function(e){
+    isCollidersOn = e.originalEvent.srcElement.checked;
+  });
 
   // UI Elements
   var timer_elem = $("#sim-timer")[0];
@@ -37,7 +59,10 @@ $(document).ready(function(){
   var car_slide_val_elem = $("#car-slider-value")[0];
   var vel_slide_val_elem = $("#vel-slider-value")[0];
 
+  var isCollidersOn = true;
+  var isintersectionOn = true;
   var fountain_img_loaded = false;
+
   var timer = 0;
   var timeScale = 0.05;
   var totalWaitingTime = 0;
@@ -50,8 +75,9 @@ $(document).ready(function(){
   var collision; //collision object used in collision calculations true if there is a collision
   var noCollisions; //true if a car does not collide with any collider
   var colRecord = false; //collision record used to determine is the car crossed start line
-  var intersectionOptions = [Globals.RIGHT_TAG, Globals.LEFT_TAG, Globals.FORWARD_TAG]; //default options for a intersections that a car can do
+  var defaultIntersectionOptions = [Globals.RIGHT_TAG, Globals.LEFT_TAG, Globals.FORWARD_TAG]; //default options for a intersections that a car can do
   var roadOptions = [Globals.END_TAG]; //default options for a start and end of roads that a car can do
+  var trafficLightOptions = defaultIntersectionOptions;
   var traffic_light_time_limit = 300;
   var interval = undefined;
   var roads;
@@ -59,6 +85,7 @@ $(document).ready(function(){
   var cars;
   var colliders;
   var tempCollider;
+  var traffic_lights;
 
   // load fountain image
   var img = new Image();
@@ -75,13 +102,8 @@ $(document).ready(function(){
     if(interval != undefined)
       clearInterval(interval);
 
-    //draw fountain and grass
-    // ctx.drawImage()
-
     // Adding roads
     roads = new Array();
-    // roads.push(new road(100, 0, 80, 50, Globals.ROAD_COLOR, Globals.VERTICALE_TAG, roadOptions, ctx));
-    // roads.push(new road(0, 100, 50, 80, Globals.ROAD_COLOR, Globals.HORIZONTAL_TAG, roadOptions, ctx));
 
     // options parameter contains
     // options that car can perform when colliding with collider
@@ -91,77 +113,72 @@ $(document).ready(function(){
     // you have start_oprions and end_options for the start and end collider
 
     //// upper horizontal roads
-    roads.push(new road(50, 220, 380, 30, Globals.ROAD_COLOR, Globals.HORIZONTAL_TAG, 2, {options: [Globals.LEFT_TAG], margin: 35, type: Globals.ROAD_TAG, num_lanes: 2, dir: 0}, undefined, ctx));
+    roads.push(new road(50, 220, 380, 30, Globals.ROAD_COLOR, Globals.HORIZONTAL_TAG, 2, Globals.LEFT_TAG, {options: [Globals.LEFT_TAG], margin: 35, type: Globals.ROAD_TAG, num_lanes: 2, dir: 0}, undefined, ctx));
 
       // traffic light
-    // roads.push(new road(430, 220, 120, 30, Globals.ROAD_COLOR, Globals.HORIZONTAL_TAG, 2, {options: roadOptions, margin: 0, type: Globals.TRAFFIC_LIGHT_TAG, num_lanes: 1, dir: 0}, undefined, ctx));
-    roads.push(new road(430, 220, 120, 30, Globals.ROAD_COLOR, Globals.HORIZONTAL_TAG, 2, undefined, undefined, ctx));
+    roads.push(new road(430, 220, 120, 30, Globals.ROAD_COLOR, Globals.HORIZONTAL_TAG, 2, Globals.LEFT_TAG, {options: trafficLightOptions, margin: 35, type: Globals.TRAFFIC_LIGHT_TAG, num_lanes: 2, dir: 0, timer: 0}, undefined, ctx));
 
-    roads.push(new road(550, 220, 0, 30, Globals.ROAD_COLOR, Globals.HORIZONTAL_TAG, 2, {options: [Globals.FORWARD_TAG, Globals.LEFT_TAG], margin: 120, type: Globals.ROAD_TAG, num_lanes: 1, dir: 0}, {options: roadOptions, margin: 0, type: Globals.START_ROAD_TAG, dir: 1}, ctx));
-    // roads.push(new road(550, 220, 0, 30, Globals.ROAD_COLOR, Globals.HORIZONTAL_TAG, 2, {options: [Globals.STOP_TAG], margin: 120, type: Globals.ROAD_TAG, num_lanes: 1, dir: 0}, {options: roadOptions, margin: 0, type: Globals.START_ROAD_TAG, dir: 1}, ctx));
+    roads.push(new road(550, 220, 0, 30, Globals.ROAD_COLOR, Globals.HORIZONTAL_TAG, 2, Globals.LEFT_TAG, {options: [Globals.FORWARD_TAG, Globals.LEFT_TAG], margin: 120, type: Globals.ROAD_TAG, num_lanes: 1, dir: 0}, {options: roadOptions, margin: 0, type: Globals.START_ROAD_TAG, dir: 1}, ctx));
 
     //// lower horizontal roads
       // traffic light
-    // roads.push(new road(200, 330, 100, 30, Globals.ROAD_COLOR, Globals.HORIZONTAL_TAG, 2, undefined, {options: roadOptions, margin: 0, type: "", num_lanes: 1, dir: 1}, ctx));
-    roads.push(new road(200, 330, 100, 30, Globals.ROAD_COLOR, Globals.HORIZONTAL_TAG, 2, undefined, undefined, ctx));
+    roads.push(new road(200, 330, 100, 30, Globals.ROAD_COLOR, Globals.HORIZONTAL_TAG, 2, Globals.RIGHT_TAG, undefined, {options: trafficLightOptions, margin: -25, type: Globals.TRAFFIC_LIGHT_TAG, num_lanes: 2, dir: 0, timer: 0}, ctx));
 
-    roads.push(new road(300, 330, 250, 30, Globals.ROAD_COLOR, Globals.HORIZONTAL_TAG, 2, undefined, {options: [Globals.FORWARD_TAG, Globals.LEFT_TAG], margin: 35, type: Globals.ROAD_TAG, num_lanes: 1, dir: 1}, ctx));
-    roads.push(new road(550, 330, 0, 30, Globals.ROAD_COLOR, Globals.HORIZONTAL_TAG, 2, undefined, {options: roadOptions, margin: 0, type: Globals.ROAD_TAG, num_lanes: 1, dir: 1}, ctx));
+    roads.push(new road(300, 330, 250, 30, Globals.ROAD_COLOR, Globals.HORIZONTAL_TAG, 2, Globals.RIGHT_TAG, undefined, {options: [Globals.FORWARD_TAG, Globals.LEFT_TAG], margin: 35, type: Globals.ROAD_TAG, num_lanes: 1, dir: 1}, ctx));
+    roads.push(new road(550, 330, 0, 30, Globals.ROAD_COLOR, Globals.HORIZONTAL_TAG, 2, Globals.RIGHT_TAG, undefined, {options: roadOptions, margin: 0, type: Globals.ROAD_TAG, num_lanes: 1, dir: 1}, ctx));
 
     //// middle
 
       // left
 
-    roads.push(new road(300, 0, 30, 80, Globals.ROAD_COLOR, Globals.VERTICALE_TAG, 2, {options: roadOptions, margin: 0, type: Globals.START_ROAD_TAG, num_lanes: 1, dir: 0}, {options: [Globals.FORWARD_TAG, Globals.LEFT_TAG], margin: 0, type: Globals.ROAD_TAG, num_lanes: 2, dir: 1}, ctx));
+    roads.push(new road(300, 0, 30, 80, Globals.ROAD_COLOR, Globals.VERTICALE_TAG, 2, Globals.DOWN_TAG, {options: roadOptions, margin: 0, type: Globals.START_ROAD_TAG, num_lanes: 1, dir: 0}, {options: [Globals.FORWARD_TAG, Globals.LEFT_TAG], margin: 0, type: Globals.ROAD_TAG, num_lanes: 2, dir: 1}, ctx));
 
       // traffic light
-    // roads.push(new road(300, 80, 30, 140, Globals.ROAD_COLOR, Globals.VERTICALE_TAG, 2, undefined, {options: roadOptions, margin: 0, type: "", num_lanes: 1, dir: 1}, ctx));
-    roads.push(new road(300, 80, 30, 140, Globals.ROAD_COLOR, Globals.VERTICALE_TAG, 2, undefined, undefined, ctx));
+    roads.push(new road(300, 80, 30, 140, Globals.ROAD_COLOR, Globals.VERTICALE_TAG, 2, Globals.DOWN_TAG, undefined, {options: trafficLightOptions, margin: -45, type: Globals.TRAFFIC_LIGHT_TAG, num_lanes: 2, dir: 0, timer: traffic_light_time_limit}, ctx));
 
-    roads.push(new road(300, 250, 30, 80, Globals.ROAD_COLOR, Globals.VERTICALE_TAG, 2, undefined, undefined, ctx));
+    roads.push(new road(300, 250, 30, 80, Globals.ROAD_COLOR, Globals.VERTICALE_TAG, 2, Globals.DOWN_TAG, undefined, undefined, ctx));
 
-    roads.push(new road(300, 360, 30, 60, Globals.ROAD_COLOR, Globals.VERTICALE_TAG, 2, undefined, {options: [Globals.LEFT_TAG, Globals.FORWARD_TAG], margin: 10, type: Globals.ROAD_TAG, num_lanes: 1, dir: 1}, ctx));
+    roads.push(new road(300, 360, 30, 60, Globals.ROAD_COLOR, Globals.VERTICALE_TAG, 2, Globals.DOWN_TAG, undefined, {options: [Globals.LEFT_TAG, Globals.FORWARD_TAG], margin: 10, type: Globals.ROAD_TAG, num_lanes: 1, dir: 1}, ctx));
 
-    roads.push(new road(300, 420, 30, 130, Globals.ROAD_COLOR, Globals.VERTICALE_TAG, 2, undefined, {options: roadOptions, margin: 0, type: Globals.ROAD_TAG, num_lanes: 1, dir: 1}, ctx));
+    roads.push(new road(300, 420, 30, 130, Globals.ROAD_COLOR, Globals.VERTICALE_TAG, 2, Globals.DOWN_TAG, undefined, {options: roadOptions, margin: 0, type: Globals.ROAD_TAG, num_lanes: 1, dir: 1}, ctx));
 
       // right
 
-    roads.push(new road(400, 0, 30, 120, Globals.ROAD_COLOR, Globals.VERTICALE_TAG, 2, {options: roadOptions, margin: 0, type: Globals.ROAD_TAG, num_lanes: 1, dir: 1}, undefined, ctx));
-    roads.push(new road(400, 120, 30, 100, Globals.ROAD_COLOR, Globals.VERTICALE_TAG, 2, {options: [Globals.LEFT_TAG, Globals.FORWARD_TAG], margin: 25, type: Globals.ROAD_TAG, num_lanes: 1, dir: 1}, undefined, ctx));
+    roads.push(new road(400, 0, 30, 120, Globals.ROAD_COLOR, Globals.VERTICALE_TAG, 2, Globals.UP_TAG, {options: roadOptions, margin: 0, type: Globals.ROAD_TAG, num_lanes: 1, dir: 1}, undefined, ctx));
+    roads.push(new road(400, 120, 30, 100, Globals.ROAD_COLOR, Globals.VERTICALE_TAG, 2, Globals.UP_TAG, {options: [Globals.LEFT_TAG, Globals.FORWARD_TAG], margin: 25, type: Globals.ROAD_TAG, num_lanes: 1, dir: 1}, undefined, ctx));
 
-    roads.push(new road(400, 250, 30, 80, Globals.ROAD_COLOR, Globals.VERTICALE_TAG, 2, undefined, undefined, ctx));
+    roads.push(new road(400, 250, 30, 80, Globals.ROAD_COLOR, Globals.VERTICALE_TAG, 2, Globals.UP_TAG, undefined, undefined, ctx));
 
       // traffic light
-    // roads.push(new road(400, 360, 30, 120, Globals.ROAD_COLOR, Globals.VERTICALE_TAG, 2, {options: roadOptions, margin: 0, type: Globals.ROAD_TAG, num_lanes: 1, dir: 0}, undefined, ctx));
-    roads.push(new road(400, 360, 30, 120, Globals.ROAD_COLOR, Globals.VERTICALE_TAG, 2, undefined, undefined, ctx));
+    roads.push(new road(400, 360, 30, 120, Globals.ROAD_COLOR, Globals.VERTICALE_TAG, 2, Globals.UP_TAG, {options: trafficLightOptions, margin: 20, type: Globals.TRAFFIC_LIGHT_TAG, num_lanes: 2, dir: 0, timer: traffic_light_time_limit}, undefined, ctx));
 
-    roads.push(new road(400, 480, 30, 70, Globals.ROAD_COLOR, Globals.VERTICALE_TAG, 2, {options: [Globals.LEFT_TAG, Globals.FORWARD_TAG], margin: 15, type: Globals.ROAD_TAG, num_lanes: 1, dir: 0}, {options: roadOptions, margin: 0, type: Globals.START_ROAD_TAG, num_lanes: 1, dir: 1}, ctx));
+    roads.push(new road(400, 480, 30, 70, Globals.ROAD_COLOR, Globals.VERTICALE_TAG, 2, Globals.UP_TAG, {options: [Globals.LEFT_TAG, Globals.FORWARD_TAG], margin: 15, type: Globals.ROAD_TAG, num_lanes: 1, dir: 0}, {options: roadOptions, margin: 0, type: Globals.START_ROAD_TAG, num_lanes: 1, dir: 1}, ctx));
 
     //// left verticale roads
 
-    roads.push(new road(170, 330, 30, 150, Globals.ROAD_COLOR, Globals.VERTICALE_TAG, 2, {options: [Globals.RIGHT_TAG], margin: 35, type: Globals.ROAD_TAG, num_lanes: 1, dir: 0}, undefined, ctx));
-    roads.push(new road(170, 480, 30,70, Globals.ROAD_COLOR, Globals.VERTICALE_TAG, 2, {options: [Globals.LEFT_TAG, Globals.FORWARD_TAG], margin: 15, type: Globals.ROAD_TAG, num_lanes: 1, dir: 0}, {options: roadOptions, margin: 0, type: Globals.START_ROAD_TAG, num_lanes: 1, dir: 1}, ctx));
+    roads.push(new road(170, 330, 30, 150, Globals.ROAD_COLOR, Globals.VERTICALE_TAG, 2, Globals.UP_TAG, {options: [Globals.RIGHT_TAG], margin: 35, type: Globals.ROAD_TAG, num_lanes: 1, dir: 0}, undefined, ctx));
+    roads.push(new road(170, 480, 30,70, Globals.ROAD_COLOR, Globals.VERTICALE_TAG, 2, Globals.UP_TAG, {options: [Globals.LEFT_TAG, Globals.FORWARD_TAG], margin: 15, type: Globals.ROAD_TAG, num_lanes: 1, dir: 0}, {options: roadOptions, margin: 0, type: Globals.START_ROAD_TAG, num_lanes: 1, dir: 1}, ctx));
 
-    roads.push(new road(50, 250, 30, 180, Globals.ROAD_COLOR, Globals.VERTICALE_TAG, 2, undefined, {options: [Globals.FORWARD_TAG, Globals.LEFT_TAG], margin: 0, type: Globals.ROAD_TAG, num_lanes: 2, dir: 1}, ctx));
-    roads.push(new road(50, 430, 30, 120, Globals.ROAD_COLOR, Globals.VERTICALE_TAG, 2, undefined, {options: roadOptions, margin: 0, type: "", num_lanes: 1, dir: 1}, ctx));
+    roads.push(new road(50, 250, 30, 180, Globals.ROAD_COLOR, Globals.VERTICALE_TAG, 2, Globals.DOWN_TAG, undefined, {options: [Globals.FORWARD_TAG, Globals.LEFT_TAG], margin: 0, type: Globals.ROAD_TAG, num_lanes: 2, dir: 1}, ctx));
+    roads.push(new road(50, 430, 30, 120, Globals.ROAD_COLOR, Globals.VERTICALE_TAG, 2, Globals.DOWN_TAG, undefined, {options: roadOptions, margin: 0, type: "", num_lanes: 1, dir: 1}, ctx));
 
     //// middle Horizontal u-turn
 
-    roads.push(new road(330, 80, 70, 30, Globals.ROAD_COLOR, Globals.HORIZONTAL_TAG, 1, undefined, {options: [Globals.LEFT_TAG], margin: -20, type: Globals.U_TURN_TAG, num_lanes: 1, dir: 1}, ctx));
-    roads.push(new road(330, 110, 70, 30, Globals.ROAD_COLOR, Globals.HORIZONTAL_TAG, 1, {options: [Globals.LEFT_TAG], margin: 20, type: Globals.U_TURN_TAG, num_lanes: 1, dir: 1}, undefined, ctx));
+    roads.push(new road(330, 80, 70, 30, Globals.ROAD_COLOR, Globals.HORIZONTAL_TAG, 1, Globals.RIGHT_TAG, undefined, {options: [Globals.LEFT_TAG], margin: -20, type: Globals.ROAD_TAG, num_lanes: 1, dir: 1}, ctx));
+    roads.push(new road(330, 110, 70, 30, Globals.ROAD_COLOR, Globals.HORIZONTAL_TAG, 1, Globals.LEFT_TAG, {options: [Globals.LEFT_TAG], margin: 20, type: Globals.ROAD_TAG, num_lanes: 1, dir: 1}, undefined, ctx));
 
-    roads.push(new road(330, 430, 70, 30, Globals.ROAD_COLOR, Globals.HORIZONTAL_TAG, 1, undefined, {options: [Globals.LEFT_TAG], margin: -20, type: Globals.U_TURN_TAG, num_lanes: 1, dir: 1}, ctx));
-    roads.push(new road(330, 460, 70, 30, Globals.ROAD_COLOR, Globals.HORIZONTAL_TAG, 1, {options: [Globals.LEFT_TAG], margin: 20, type: Globals.U_TURN_TAG, num_lanes: 1, dir: 1}, undefined, ctx));
+    roads.push(new road(330, 430, 70, 30, Globals.ROAD_COLOR, Globals.HORIZONTAL_TAG, 1, Globals.RIGHT_TAG, undefined, {options: [Globals.LEFT_TAG], margin: -20, type: Globals.ROAD_TAG, num_lanes: 1, dir: 1}, ctx));
+    roads.push(new road(330, 460, 70, 30, Globals.ROAD_COLOR, Globals.HORIZONTAL_TAG, 1, Globals.LEFT_TAG, {options: [Globals.LEFT_TAG], margin: 20, type: Globals.ROAD_TAG, num_lanes: 1, dir: 1}, undefined, ctx));
 
     //// left horizontal u-turn
 
-    roads.push(new road(80, 430, 90, 30, Globals.ROAD_COLOR, Globals.HORIZONTAL_TAG, 1, undefined, {options: [Globals.LEFT_TAG], margin: -20, type: Globals.U_TURN_TAG, num_lanes: 1, dir: 1}, ctx));
-    roads.push(new road(80, 460, 90, 30, Globals.ROAD_COLOR, Globals.HORIZONTAL_TAG, 1, undefined, {options: [Globals.LEFT_TAG], margin: -70, type: Globals.U_TURN_TAG, num_lanes: 1, dir: 1}, ctx));
+    roads.push(new road(80, 430, 90, 30, Globals.ROAD_COLOR, Globals.HORIZONTAL_TAG, 1, Globals.RIGHT_TAG, undefined, {options: [Globals.LEFT_TAG], margin: -20, type: Globals.ROAD_TAG, num_lanes: 1, dir: 1}, ctx));
+    roads.push(new road(80, 460, 90, 30, Globals.ROAD_COLOR, Globals.HORIZONTAL_TAG, 1, Globals.LEFT_TAG, undefined, {options: [Globals.LEFT_TAG], margin: -70, type: Globals.ROAD_TAG, num_lanes: 1, dir: 1}, ctx));
 
     //// right verticale u-turn
 
-    roads.push(new road(635, 250, 30, 80, Globals.ROAD_COLOR, Globals.VERTICALE_TAG, 1, undefined, {options: [Globals.LEFT_TAG], margin: 0, type: Globals.U_TURN_TAG, num_lanes: 1, dir: 1}, ctx));
-    roads.push(new road(605, 250, 30, 80, Globals.ROAD_COLOR, Globals.VERTICALE_TAG, 1, undefined, {options: [Globals.LEFT_TAG], margin: -60, type: Globals.U_TURN_TAG, num_lanes: 1, dir: 1}, ctx));
+    roads.push(new road(635, 250, 30, 80, Globals.ROAD_COLOR, Globals.VERTICALE_TAG, 1, Globals.DOWN_TAG, undefined, {options: [Globals.LEFT_TAG], margin: 0, type: Globals.ROAD_TAG, num_lanes: 1, dir: 1}, ctx));
+    roads.push(new road(605, 250, 30, 80, Globals.ROAD_COLOR, Globals.VERTICALE_TAG, 1, Globals.UP_TAG, undefined, {options: [Globals.LEFT_TAG], margin: -60, type: Globals.ROAD_TAG, num_lanes: 1, dir: 1}, ctx));
 
     // start road
     // we are adding the start_roads colliders only to this array
@@ -172,7 +189,6 @@ $(document).ready(function(){
     for(var i=0 ; i<roads.length ; i++){
       for(var j=0 ; j<roads[i].options.length ; j++){
         if(roads[i].options[j] !== undefined && roads[i].options[j].type == Globals.START_ROAD_TAG){
-          // start_roads.push({x: roads[i].x, y: roads[i].y, width: roads[i].width, height: roads[i].height, orient: roads[i].orient});
           start_roads.push(roads[i]);
         }
       }
@@ -181,6 +197,8 @@ $(document).ready(function(){
     // Adding cars
     cars = generateCars(start_roads, n_cars, ctx);
 
+    // keep track of traffic lights
+    traffic_lights = new Array();
     // Creating collidiers
     colliders = new Array();
     // Adding cars collidiers
@@ -192,6 +210,9 @@ $(document).ready(function(){
       for(var j=0 ; j<roads[i].options.length ; j++){
           if(roads[i].options[j] !== undefined){
             colliders.push({collider: roads[i].colliders[j], type: Globals.ROAD_TAG, options: roads[i].options[j]});
+            if(roads[i].options[j].type == Globals.TRAFFIC_LIGHT_TAG){
+              traffic_lights.push({collider: roads[i].colliders[j], type: Globals.ROAD_TAG, options: roads[i].options[j]});
+            }
           }
       }
     }
@@ -216,8 +237,6 @@ $(document).ready(function(){
     car_count_elem.innerText = cars.length;
 
     //draw grass
-    // ctx.fillStyle = "#097090";
-    // ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
     //draw fountain image
     ctx.drawImage(img, 330, 255, 70, 70);
@@ -231,12 +250,9 @@ $(document).ready(function(){
       cars[i].draw();
     }
 
-    // for(var i=0 ; i<intersections.length ; i++){
-    //   for(var j=0; j<intersections[i].timers.length ; j++){
-    //     intersections[i].timers[j] += timer_speed;
-    //     // console.log("Traffic Light "+ j + ":" + intersections[i].timers[j]);
-    //   }
-    // }
+    for(var i=0 ; i<traffic_lights.length ; i++){
+      traffic_lights[i].options.timer += timer_speed;
+    }
 
     // Check if cars crossed the start line so it can start calculate collisions
     for(var i=0 ; i<cars.length ; i++){
@@ -290,82 +306,68 @@ $(document).ready(function(){
           {
             noCollisions = false;
             //Collision Happened
-            // console.log("car "+i+" collision with collider "+j+" type "+colliders[j].type+"  "+colliders[j].dir);
-            if(colliders[j].type == Globals.TRAFFIC_LIGHT_TAG)
-              {
-                //collision with a traffic light
-                if(intersections[colliders[j].intersection_index].timers[colliders[j].light_index] > 0 && intersections[colliders[j].intersection_index].timers[colliders[j].light_index] < traffic_light_time_limit){
-                  //traffic light is closed stop cars
-                  // console.log("Traffic Light");
-                  cars[i].acc = 0;
-                }else if(intersections[colliders[j].intersection_index].timers[colliders[j].light_index] > traffic_light_time_limit*2 ){
-                  //reset traffic light timer to start from the begining
-                  intersections[colliders[j].intersection_index].timers[colliders[j].light_index] = 0;
-                }else{
-
-                  ///////////NEEDS WORK//////////////////
-                  var optionIndex = Math.floor(Math.random() * colliders[j].options.length);
-                  var option = colliders[j].options[optionIndex];
-                  cars[i].acc = cars[i].previousAcc;
-                  if(option == Globals.RIGHT_TAG || option == Globals.LEFT_TAG)
-                    cars[i].change_lane(option);
-                  // console.log(option);
-                  ////////////
-                }
-              }else if(colliders[j].type == Globals.CAR_TAG){
+            if(colliders[j].type == Globals.CAR_TAG){
                 if(!cars[i].reducedSpeed && cars[i].car_in_front(colliders[j].collider)){
                   cars[i].previousAcc = .9*cars[i].acc;
                   cars[i].acc = .75*cars[j].acc;
-                  // cars[i].acc = .1;
 
                   cars[i].reducedSpeed = true;
                 }
-                // cars[i].acc = 0;
-                // cars[i].n_carCollisions++;
-                // console.log("cars::"+i+":"+cars[i].car_in_front(colliders[j].collider));
-                // console.log(colliders[j].collider.pos.x, cars[i].x);
               }else if(colliders[j].type == Globals.ROAD_TAG){
                 // cars[i].acc = 0;
+                if(colliders[j].options.type == Globals.ROAD_TAG){
+                  var optionIndex = Math.floor(Math.random() * colliders[j].options.options.length);
+                  var option = colliders[j].options.options[optionIndex];
+                  if(option == Globals.END_TAG){
+                    totalWaitingTime += cars[i].timer;
+                    numCarsOut++;
+                    colliders.splice(i, 1);
+                    cars.splice(i, 1);
+                  }else if(option == Globals.FORWARD_TAG){
+                    cars[i].crossedStartLine = false;
+                    cars[i].option = undefined;
+                  }else{
+                    cars[i].crossedStartLine = false;
+                    cars[i].option = option;
+                    cars[i].currentCollision = colliders[j].options.num_lanes;
+                  }
+                }else if(colliders[j].options.type == Globals.TRAFFIC_LIGHT_TAG){
+                  //collision with a traffic light
+                  console.log("Traffic Light", colliders[j].options.timer);
 
-                var optionIndex = Math.floor(Math.random() * colliders[j].options.options.length);
-                var option = colliders[j].options.options[optionIndex];
-                // console.log(option, optionIndex, colliders[j].options.options.length);
-                if(option == Globals.END_TAG){
-                  totalWaitingTime += cars[i].timer;
-                  numCarsOut++;
-                  colliders.splice(i, 1);
-                  cars.splice(i, 1);
-                }else if(option == Globals.FORWARD_TAG){
-                  cars[i].crossedStartLine = false;
-                  cars[i].option = undefined;
-                }else if(option == Globals.STOP_TAG){
-                  // cars[i].acc = 0;
-                }else{
-                  cars[i].crossedStartLine = false;
-                  cars[i].option = option;
-                  cars[i].currentCollision = colliders[j].options.num_lanes;
+                  if(colliders[j].options.timer > 0 && colliders[j].options.timer < traffic_light_time_limit){
+                    //traffic light is closed stop cars
+                    cars[i].acc = 0;
+                  }else if(colliders[j].options.timer > traffic_light_time_limit*2 ){
+                    //reset traffic light timer to start from the begining
+                    colliders[j].options.timer = 0;
+                  }else{
+
+                    ///////////NEEDS WORK//////////////////
+                    var optionIndex = Math.floor(Math.random() * colliders[j].options.options.length);
+                    var option = colliders[j].options.options[optionIndex];
+                    if(option == Globals.FORWARD_TAG){
+                      cars[i].crossedStartLine = false;
+                      cars[i].option = undefined;
+                    }else if(option == Globals.LEFT_TAG){
+
+                    }else if(option == Globals.RIGHT_TAG){
+                      cars[i].crossedStartLine = false;
+                      cars[i].option = option;
+                      cars[i].currentCollision = colliders[j].options.num_lanes;
+                    }
+                    ////////////
+                  }
+
                 }
-              }else{
-                // cars[i].acc = cars[i].previousAcc;
-              }
-          }else{
-            //No Collision Happened
-            // cars[i].move();
-            // cars[i].acc = cars[i].previousAcc;
 
+              }
           }
       }
       // preform step movement for car i for this frame
       cars[i].move();
-      // if(!cars[i].crossedStartLine && cars[i].n_carCollisions == 1){
-      //   cars[i].neglectCarCollision = true;
-      //   noCollisions = true;
-      // }else{
-      //   cars[i].neglectCarCollision = false;
-      // }
 
       if(cars[i].reducedSpeed){
-        // console.log(cars[i].acc);
         cars[i].holdOutTime += timeScale;
         if(cars[i].holdOutTime > 2){
           cars[i].holdOutTime = 0;
@@ -389,28 +391,28 @@ $(document).ready(function(){
 
 
     // Drawing collidiers
-    drawColliders(colliders, ctx);
+    if(isCollidersOn)
+      drawColliders(colliders, ctx);
 
   };
 
 
   // temp call to start simulation for testing purposes
-  console.log("HIII");
   initSimulation();
 
 
   start_b.on('click', function(e){
+    console.log("Start Simulation");
     initSimulation();
-
   });
   restart_b.on('click', function(e){
-    console.log(e);
+    console.log("Restart Simulation");
     if(interval != undefined)
       clearInterval(interval);
     interval = setInterval(mainLoop, Globals.FRAME_DELAY);
   });
   stop_b.on('click', function(e){
-    console.log(e);
+    console.log("Stop Simulation");
     clearInterval(interval);
   });
 

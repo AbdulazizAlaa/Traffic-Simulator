@@ -176,7 +176,7 @@ var car = function(x, y, width, height, accelration, color, orientation, directi
 };
 
 
-var road = function(x, y, width, height, color, orientation, num_lanes, start_options, end_options, ctx){
+var road = function(x, y, width, height, color, orientation, num_lanes, dir, start_options, end_options, ctx){
 
   this.x = x;
   this.y = y;
@@ -188,6 +188,7 @@ var road = function(x, y, width, height, color, orientation, num_lanes, start_op
   this.carCount = [1, 1]; // number of cars generated in each road
   this.options = [start_options, end_options];
   this.num_lanes = num_lanes;
+  this.dir = dir;
 
   if(this.orient == Globals.HORIZONTAL_TAG){
     this.width = (width==0)? (ctx.canvas.width - this.x) : width; // lw el width ewaul zero yb2a ana 3awz el width bta3 el canvas same with height
@@ -236,26 +237,28 @@ var road = function(x, y, width, height, color, orientation, num_lanes, start_op
         }
 
       }
+      this.ctx.strokeStyle = "#FFAB2F";
+      this.ctx.lineWidth = .8;
+      var length = 10;
 
+      if(this.num_lanes == 1){
+        if(this.orient == Globals.VERTICALE_TAG){
+          drawArrow(this.x, this.y, length, this.width, this.dir, this.ctx);
+        }else if(this.orient == Globals.HORIZONTAL_TAG){
+          drawArrow(this.x, this.y, length, this.height, this.dir, this.ctx);
+        }
+      }else if(this.num_lanes == 2){
+        if(this.orient == Globals.VERTICALE_TAG){
+          drawArrow(this.x, this.y, length, this.width/2, this.dir, this.ctx);
+          drawArrow(this.x+this.width/2, this.y, length, this.width/2, this.dir, this.ctx);
+        }else if(this.orient == Globals.HORIZONTAL_TAG){
+          drawArrow(this.x, this.y, length, this.height/2, this.dir, this.ctx);
+          drawArrow(this.x, this.y+this.height/2, length, this.height/2, this.dir, this.ctx);
+        }
+
+      }
   };
 
-};
-
-var intersection = function(x, y, width, height, thickness, options){
-  this.x = x;
-  this.y = y;
-  this.width = width;
-  this.height = height;
-  this.thickness = thickness;
-  this.timers = [0, 350, 0, 350];
-  this.options = options;
-
-  this.traffic_lights = new Array();
-
-  this.traffic_lights.push(new SAT.Box(new SAT.Vector(this.x+this.thickness, this.y-this.thickness), this.width/2-2*this.thickness, this.thickness));
-  this.traffic_lights.push(new SAT.Box(new SAT.Vector(this.x-this.thickness, this.y+this.thickness), this.thickness, this.height/2-2*this.thickness));
-  this.traffic_lights.push(new SAT.Box(new SAT.Vector(this.x+this.width/2+this.thickness, this.y+this.height), this.width/2-2*this.thickness, this.thickness));
-  this.traffic_lights.push(new SAT.Box(new SAT.Vector(this.x+this.width, this.y+this.height/2+this.thickness), this.thickness, this.height/2-2*this.thickness));
 };
 
 var drawColliders = function(colliders, ctx){
@@ -263,6 +266,8 @@ var drawColliders = function(colliders, ctx){
   for(var i=0; i<colliders.length ; i++){
     if(colliders[i].options !== undefined && colliders[i].options.type == Globals.START_ROAD_TAG)
       ctx.strokeStyle = Globals.START_COLLIDER_COLOR;
+    else if(colliders[i].options !== undefined && colliders[i].options.type == Globals.TRAFFIC_LIGHT_TAG)
+      ctx.strokeStyle = Globals.TRAFFIC_LIGHT_COLOR;
     else
       ctx.strokeStyle = Globals.COLLIDER_COLOR;
     if(colliders[i].orient == Globals.VERTICALE_TAG){
@@ -290,7 +295,7 @@ var generateCars = function(roads, n_cars, ctx){
       road_index = Math.floor(Math.random() * roads.length);
       lane_index = Math.floor(Math.random() * 2);
       // lane_index = 0;
-      // road_index = 0;
+      // road_index = 2;
       // dir_index = 1;
 
       // this construct is called conditional ternary operator
@@ -344,4 +349,47 @@ var generateCars = function(roads, n_cars, ctx){
       cars.push(new car(x, y, car_w, car_h, acc, colorCodes[color_index], orient, dir, options, lane_index, ctx));
     }
     return cars;
+};
+
+var drawArrow = function(x, y, length, width, dir, ctx){
+  var cX, rX, lX, sY, eY, cY;
+  if(dir == Globals.UP_TAG){
+
+  }else if(dir == Globals.DOWN_TAG){
+    ctx.translate(x+length/2, y+length/2);
+    ctx.rotate(180 * Math.PI / 180);
+    ctx.translate(-x-length, -y-length/2);
+  }else if(dir == Globals.RIGHT_TAG){
+    ctx.translate(x+length/2, y+length/2);
+    ctx.rotate(90 * Math.PI / 180);
+    ctx.translate(-x-length/2, -y-length/2);
+  }else if(dir == Globals.LEFT_TAG){
+    ctx.translate(x+length/2, y+length/2);
+    ctx.rotate(-90 * Math.PI / 180);
+    ctx.translate(-x-length, -y-length/2);
+  }
+  cX = x+.5*width;
+  rX = x+.75*width;
+  lX = x+.25*width;
+
+  sY = y+length;
+  eY = y;
+  cY = y+.75*length;
+
+  ctx.beginPath();
+  ctx.moveTo(cX, sY);
+  ctx.lineTo(cX, eY);
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(rX, cY);
+  ctx.lineTo(cX, eY);
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(lX, cY);
+  ctx.lineTo(cX, eY);
+  ctx.stroke();
+
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
 };
