@@ -1,5 +1,7 @@
 # Traffic-Simulator
 
+> Preview Link : http://abdulazizalaa.github.io/Traffic-Simulator/
+
 #### Project Structure
   - Traffic-Simulator
     - css
